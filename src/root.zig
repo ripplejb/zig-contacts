@@ -22,23 +22,21 @@ pub fn myFirstGpa(gpaAllocator: std.mem.Allocator, writer: *Io.Writer) mfgErrors
     };
     defer gpaAllocator.free(lstNames);
 
+    var lengths: [20]usize = undefined;
+
     for (lstNames, 0..) |*name, i| {
-        _ = std.fmt.bufPrint(&name.*, "Test {}", .{i}) catch {
+        if (std.fmt.bufPrint(name[0..], "Test {}", .{i})) |res| {
+            lengths[i] = res.len;
+        } else |_| {
             try writer.print("ERROR setting a name {}", .{i});
-        };
+        }
     }
 
     try writer.print("Names\n", .{});
     try writer.print("=====\n", .{});
 
     for (lstNames, 0..) |name, i| {
-        var len: u16 = undefined;
-        if (i < 10) {
-            len = 6;
-        } else {
-            len = 7;
-        }
-        const cleanName = name[0..len];
+        const cleanName = name[0..lengths[i]];
         try writer.print("{s}\n", .{cleanName});
     }
 
@@ -48,4 +46,22 @@ pub fn myFirstGpa(gpaAllocator: std.mem.Allocator, writer: *Io.Writer) mfgErrors
 
 test "basic add functionality" {
     try std.testing.expect(add(3, 7) == 10);
+}
+
+test "my first gpaAllocator" {
+
+    // Use the test allocator for the input
+    const gpa = std.testing.allocator;
+
+    // Create a list to catch the output
+    var list = try std.ArrayList(u8).initCapacity(gpa, 1024);
+    defer list.deinit(gpa);
+
+    var stdout_file_writer = Io.Writer.fromArrayList(&list);
+
+    try myFirstGpa(gpa, &stdout_file_writer);
+
+    list = stdout_file_writer.toArrayList();
+
+    try std.testing.expectStringStartsWith(list.items, "Names");
 }
