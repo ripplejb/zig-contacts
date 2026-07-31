@@ -22,21 +22,14 @@ pub fn myFirstGpa(gpaAllocator: std.mem.Allocator, writer: *Io.Writer) mfgErrors
     };
     defer gpaAllocator.free(lstNames);
 
-    var lengths: [20]usize = undefined;
-
-    for (lstNames, 0..) |*name, i| {
-        if (std.fmt.bufPrint(name[0..], "Test {}", .{i})) |res| {
-            lengths[i] = res.len;
-        } else |_| {
-            try writer.print("ERROR setting a name {}", .{i});
-        }
-    }
-
     try writer.print("Names\n", .{});
     try writer.print("=====\n", .{});
 
-    for (lstNames, 0..) |name, i| {
-        const cleanName = name[0..lengths[i]];
+    for (lstNames, 0..) |*name, i| {
+        const cleanName = std.fmt.bufPrint(name[0..], "Test {}", .{i}) catch {
+            try writer.print("ERROR setting a name {}", .{i});
+            continue;
+        };
         try writer.print("{s}\n", .{cleanName});
     }
 
