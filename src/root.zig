@@ -16,21 +16,26 @@ pub fn add(a: i32, b: i32) i32 {
 const mfgErrors = Io.Writer.Error || std.mem.Allocator.Error;
 
 pub fn myFirstGpa(gpaAllocator: std.mem.Allocator, writer: *Io.Writer) mfgErrors!void {
-    const lstNames = gpaAllocator.alloc([32]u8, 20) catch |err| {
+    const lstNames = gpaAllocator.alloc([]u8, 20) catch |err| {
         try writer.print("ERROR allocating lstNames", .{});
         return err;
     };
-    defer gpaAllocator.free(lstNames);
+    defer {
+        for (lstNames) |name| {
+            gpaAllocator.free(name);
+        }
+        gpaAllocator.free(lstNames);
+    }
+
+    for (lstNames, 0..) |*name, i| {
+        name.* = try std.fmt.allocPrint(gpaAllocator, "Test {}", .{i});
+    }
 
     try writer.print("Names\n", .{});
     try writer.print("=====\n", .{});
 
-    for (lstNames, 0..) |*name, i| {
-        const cleanName = std.fmt.bufPrint(name[0..], "Test {}", .{i}) catch {
-            try writer.print("ERROR setting a name {}", .{i});
-            continue;
-        };
-        try writer.print("{s}\n", .{cleanName});
+    for (lstNames) |name| {
+        try writer.print("{s}\n", .{name});
     }
 
     try writer.flush(); // Don't forget to flush!
