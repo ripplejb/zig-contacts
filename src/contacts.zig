@@ -55,6 +55,7 @@ pub const ContactBook = struct {
     pub fn removeContact(self: *ContactBook, phone: []const u8) void {
         for (self.contacts.items, 0..) |item, index| {
             if (std.mem.eql(u8, item.phone, phone)) {
+                item.deinit(self.allocator);
                 _ = self.contacts.swapRemove(index);
                 return;
             }
@@ -82,8 +83,8 @@ test "Test ContactBook" {
     try std.testing.expectEqual(@as(usize, 1), wcnt);
 
     // remove Correct phone number
-    contacts.removeContact("123456789");
+    contacts.removeContact("1223456789");
 
     const ccnt = contacts.getContactCount();
-    try std.testing.expectEqual(@as(usize, 1), ccnt);
+    try std.testing.expectEqual(@as(usize, 0), ccnt);
 }
