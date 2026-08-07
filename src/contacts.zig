@@ -1,6 +1,11 @@
 const std = @import("std");
 const Io = std.Io;
 
+const contactErrors = error{
+    NameNotFound,
+    OutOfMemory,
+};
+
 const Contact = struct {
     name: []u8,
     email: []u8,
@@ -61,6 +66,19 @@ pub const ContactBook = struct {
             }
         }
     }
+
+    pub fn searchByName(self: *ContactBook, name: []const u8) contactErrors!Contact {
+        for (self.contacts.items) |item| {
+            if (std.mem.eql(u8, item.name, name)) {
+                return Contact{
+                    .email = try self.allocator.dupe(u8, item.email),
+                    .name = try self.allocator.dupe(u8, item.name),
+                    .phone = try self.allocator.dupe(u8, item.name),
+                };
+            }
+        }
+        return contactErrors.NameNotFound;
+    }
 };
 
 test "Test ContactBook" {
@@ -87,4 +105,19 @@ test "Test ContactBook" {
 
     const ccnt = contacts.getContactCount();
     try std.testing.expectEqual(@as(usize, 0), ccnt);
+}
+
+test "Test searchContact" {
+    const allocator = std.testing.allocator;
+    var contacts = ContactBook.init(allocator);
+    defer contacts.deinit();
+
+    try contacts.createContact("Ripal", "asfd@ght.com", "123456789");
+
+    try std.testing.expectError(contactErrors.NameNotFound, contacts.searchByName("Mahesh"));
+
+    const contact = try contacts.searchByName("Ripal");
+    defer contact.deinit(allocator);
+
+    try std.testing.expectEqualStrings("asfd@ght.com", contact.email);
 }
