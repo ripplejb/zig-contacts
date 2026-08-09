@@ -19,21 +19,22 @@ const Contact = struct {
 };
 
 pub const ContactBook = struct {
-    allocator: std.mem.Allocator,
+    arena: std.heap.ArenaAllocator,
     contacts: std.ArrayList(Contact),
 
     pub fn init(allocator: std.mem.Allocator) ContactBook {
         return .{
-            .allocator = allocator,
+            .arena = std.heap.ArenaAllocator.init(allocator),
             .contacts = std.ArrayList(Contact).empty,
         };
     }
 
     pub fn deinit(self: *ContactBook) void {
-        for (self.contacts.items) |contact| {
-            contact.deinit(self.allocator);
-        }
-        self.contacts.deinit(self.allocator);
+        // for (self.contacts.items) |contact| {
+        //     contact.deinit(self.allocator);
+        // }
+        // self.contacts.deinit(self.allocator);
+        self.arena.deinit();
     }
 
     pub fn getContactCount(self: *ContactBook) usize {
@@ -41,12 +42,13 @@ pub const ContactBook = struct {
     }
 
     pub fn createContact(self: *ContactBook, name: []const u8, email: []const u8, phone: []const u8) !void {
-        const heap_name = try self.allocator.dupe(u8, name);
-        errdefer self.allocator.free(heap_name);
-        const heap_email = try self.allocator.dupe(u8, email);
-        errdefer self.allocator.free(heap_email);
-        const heap_phone = try self.allocator.dupe(u8, phone);
-        errdefer self.allocator.free(heap_phone);
+        const allocator = self.arena.allocator();
+        const heap_name = try allocator.dupe(u8, name);
+        errdefer allocator.free(heap_name);
+        const heap_email = try allocator.dupe(u8, email);
+        errdefer allocator.free(heap_email);
+        const heap_phone = try allocator.dupe(u8, phone);
+        errdefer allocator.free(heap_phone);
 
         const new_contact = Contact{
             .name = heap_name,
@@ -54,27 +56,30 @@ pub const ContactBook = struct {
             .phone = heap_phone,
         };
 
-        try self.contacts.append(self.allocator, new_contact);
+        try self.contacts.append(allocator, new_contact);
     }
 
     pub fn removeContact(self: *ContactBook, phone: []const u8) void {
+        const allocator = self.arena.allocator();
         for (self.contacts.items, 0..) |item, index| {
             if (std.mem.eql(u8, item.phone, phone)) {
-                item.deinit(self.allocator);
+                item.deinit(allocator);
                 _ = self.contacts.swapRemove(index);
                 return;
             }
         }
     }
 
-    pub fn searchByName(self: *ContactBook, name: []const u8) contactErrors!Contact {
-        for (self.contacts.items) |item| {
+    pub fn searchByName(self: *ContactBook, name: []const u8) contactErrors!*Contact {
+        for (self.contacts.items) |*item| {
             if (std.mem.eql(u8, item.name, name)) {
-                return Contact{
-                    .email = try self.allocator.dupe(u8, item.email),
-                    .name = try self.allocator.dupe(u8, item.name),
-                    .phone = try self.allocator.dupe(u8, item.name),
-                };
+                return item;
+                // const allocator = self.arena.allocator();
+                // return Contact{
+                //     .email = try allocator.dupe(u8, item.email),
+                //     .name = try allocator.dupe(u8, item.name),
+                //     .phone = try allocator.dupe(u8, item.name),
+                // };
             }
         }
         return contactErrors.NameNotFound;
@@ -117,7 +122,7 @@ test "Test searchContact" {
     try std.testing.expectError(contactErrors.NameNotFound, contacts.searchByName("Mahesh"));
 
     const contact = try contacts.searchByName("Ripal");
-    defer contact.deinit(allocator);
+    // defer contact.deinit(allocator);
 
     try std.testing.expectEqualStrings("asfd@ght.com", contact.email);
 }
