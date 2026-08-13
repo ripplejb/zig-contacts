@@ -84,6 +84,18 @@ pub const ContactBook = struct {
         }
         return contactErrors.NameNotFound;
     }
+
+    pub fn listAll(self: *ContactBook, writer: *Io.Writer) !void {
+        writer.print("Name\t\t\t", .{});
+        writer.print("Email\t\t\t", .{});
+        writer.print("Phone\n", .{});
+        writer.print("========================================================================\n", .{});
+        for (self.contacts.items) |item| {
+            writer.print("{s}\t\t", .{item.name});
+            writer.print("{s}\t\t", .{item.email});
+            writer.print("{s}", .{item.phone});
+        }
+    }
 };
 
 test "Test ContactBook" {

@@ -4,19 +4,6 @@ const Io = std.Io;
 const zig_contacts = @import("zig_contacts");
 
 pub fn main(init: std.process.Init) !void {
-    // Prints to stderr, unbuffered, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-
-    // This is appropriate for anything that lives as long as the process.
-    const arena: std.mem.Allocator = init.arena.allocator();
-
-    // Accessing command line arguments:
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
-    }
-
-    const allocator = init.gpa;
 
     // In order to do I/O operations need an `Io` instance.
     const io = init.io;
@@ -28,10 +15,38 @@ pub fn main(init: std.process.Init) !void {
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
 
-    try zig_contacts.myFirstGpa(allocator, stdout_writer);
-    try zig_contacts.printAnotherMessage(stdout_writer);
+    var stdin_buffer: [100]u8 = undefined;
+    var stdin_file_reader: Io.File.Reader = .init(.stdin(), io, &stdin_buffer);
+    const stdin_reader = &stdin_file_reader.interface;
+    while (true) {
+        try writeMenu(stdout_writer);
+        const input = try inputReader("Type something here and press enter: ", stdout_writer, stdin_reader);
+        try stdout_writer.print("\n{s} is your input.", .{input});
+        try stdout_writer.flush();
+        if (std.mem.eql(u8, input, "5")) {
+            break;
+        }
+    }
+}
 
-    try stdout_writer.flush(); // Don't forget to flush!
+pub fn writeMenu(writer: *Io.Writer) !void {
+    try writer.print("Select your option:\n", .{});
+    try writer.print("======================\n", .{});
+    try writer.print("[1] New Contact\n", .{});
+    try writer.print("[2] List Contacts\n", .{});
+    try writer.print("[3] Search Contacts\n", .{});
+    try writer.print("[4] Delete Contact\n", .{});
+    try writer.print("[5] Exit\n", .{});
+    try writer.flush();
+}
+
+pub fn inputReader(prompt: []const u8, writer: *Io.Writer, reader: *Io.Reader) ![]const u8 {
+    try writer.print("{s} ", .{prompt});
+    try writer.flush();
+
+    const input = (try reader.takeDelimiter('\n')) orelse return error.EndOfStream;
+    const clean = std.mem.trimEnd(u8, input, "\r");
+    return clean;
 }
 
 test "simple test" {
