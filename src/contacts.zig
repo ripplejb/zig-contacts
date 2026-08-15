@@ -74,27 +74,23 @@ pub const ContactBook = struct {
         for (self.contacts.items) |*item| {
             if (std.mem.eql(u8, item.name, name)) {
                 return item;
-                // const allocator = self.arena.allocator();
-                // return Contact{
-                //     .email = try allocator.dupe(u8, item.email),
-                //     .name = try allocator.dupe(u8, item.name),
-                //     .phone = try allocator.dupe(u8, item.name),
-                // };
             }
         }
         return contactErrors.NameNotFound;
     }
 
     pub fn listAll(self: *ContactBook, writer: *Io.Writer) !void {
-        writer.print("Name\t\t\t", .{});
-        writer.print("Email\t\t\t", .{});
-        writer.print("Phone\n", .{});
-        writer.print("========================================================================\n", .{});
+        try writer.print("\n", .{});
+        try writer.print("Name\t\t\t", .{});
+        try writer.print("Email\t\t\t", .{});
+        try writer.print("Phone\n", .{});
+        try writer.print("========================================================================\n", .{});
         for (self.contacts.items) |item| {
-            writer.print("{s}\t\t", .{item.name});
-            writer.print("{s}\t\t", .{item.email});
-            writer.print("{s}", .{item.phone});
+            try writer.print("{s}\t\t", .{item.name});
+            try writer.print("{s}\t\t", .{item.email});
+            try writer.print("{s}", .{item.phone});
         }
+        try writer.print("\n", .{});
     }
 };
 

@@ -1,7 +1,9 @@
 const std = @import("std");
 const Io = std.Io;
 
-const zig_contacts = @import("zig_contacts");
+const contacts = @import("contacts_mod");
+
+const MenuItem = enum { @"1", @"2", @"3", @"4", @"5", @"6" };
 
 pub fn main(init: std.process.Init) !void {
 
@@ -18,18 +20,35 @@ pub fn main(init: std.process.Init) !void {
     var stdin_buffer: [100]u8 = undefined;
     var stdin_file_reader: Io.File.Reader = .init(.stdin(), io, &stdin_buffer);
     const stdin_reader = &stdin_file_reader.interface;
+    const allocator = std.heap.smp_allocator;
+    var contectBook: contacts.ContactBook = .init(allocator);
+    defer contectBook.deinit();
+
+    var input_buf: [100]u8 = undefined;
+
     while (true) {
         try writeMenu(stdout_writer);
-        const input = try inputReader("Type something here and press enter: ", stdout_writer, stdin_reader);
-        try stdout_writer.print("\n{s} is your input.", .{input});
+        const input = try inputReader("Type something here and press enter: ", &input_buf, stdout_writer, stdin_reader);
+        try stdout_writer.print("\n{s} is your input.\n", .{input});
         try stdout_writer.flush();
-        if (std.mem.eql(u8, input, "5")) {
-            break;
+
+        const selection = std.meta.stringToEnum(MenuItem, input) orelse {
+            try stdout_writer.print("Invalid Input\n", .{});
+            try stdout_writer.flush();
+            continue;
+        };
+
+        switch (selection) {
+            .@"1" => try AddContact(&contectBook, stdout_writer, stdin_reader),
+            .@"2" => try contectBook.listAll(stdout_writer),
+            .@"5" => break,
+            else => {},
         }
     }
 }
 
 pub fn writeMenu(writer: *Io.Writer) !void {
+    try writer.print("\n", .{});
     try writer.print("Select your option:\n", .{});
     try writer.print("======================\n", .{});
     try writer.print("[1] New Contact\n", .{});
@@ -40,13 +59,27 @@ pub fn writeMenu(writer: *Io.Writer) !void {
     try writer.flush();
 }
 
-pub fn inputReader(prompt: []const u8, writer: *Io.Writer, reader: *Io.Reader) ![]const u8 {
+pub fn inputReader(prompt: []const u8, buf: []u8, writer: *Io.Writer, reader: *Io.Reader) ![]const u8 {
     try writer.print("{s} ", .{prompt});
     try writer.flush();
 
     const input = (try reader.takeDelimiter('\n')) orelse return error.EndOfStream;
     const clean = std.mem.trimEnd(u8, input, "\r");
-    return clean;
+    @memcpy(buf[0..clean.len], clean);
+    return buf[0..clean.len];
+}
+
+pub fn AddContact(contactBook: *contacts.ContactBook, writer: *Io.Writer, reader: *Io.Reader) !void {
+    try writer.print("\n", .{});
+    var name_buf: [100]u8 = undefined;
+    var email_buf: [100]u8 = undefined;
+    var phone_buf: [100]u8 = undefined;
+
+    const name = try inputReader("Name ==>", &name_buf, writer, reader);
+    const email = try inputReader("email ==>", &email_buf, writer, reader);
+    const phone = try inputReader("Phone ==>", &phone_buf, writer, reader);
+
+    try contactBook.createContact(name, email, phone);
 }
 
 test "simple test" {
