@@ -41,6 +41,8 @@ pub fn main(init: std.process.Init) !void {
         switch (selection) {
             .@"1" => try AddContact(&contectBook, stdout_writer, stdin_reader),
             .@"2" => try contectBook.listAll(stdout_writer),
+            .@"3" => try searchContact(&contectBook, stdout_writer, stdin_reader),
+            .@"4" => try removeContact(&contectBook, stdout_writer, stdin_reader),
             .@"5" => break,
             else => {},
         }
@@ -80,6 +82,32 @@ pub fn AddContact(contactBook: *contacts.ContactBook, writer: *Io.Writer, reader
     const phone = try inputReader("Phone ==>", &phone_buf, writer, reader);
 
     try contactBook.createContact(name, email, phone);
+}
+
+pub fn removeContact(contactBook: *contacts.ContactBook, writer: *Io.Writer, reader: *Io.Reader) !void {
+    try writer.print("\n", .{});
+    var phone_buf: [100]u8 = undefined;
+
+    const phone = try inputReader("Phone to remove ==>", &phone_buf, writer, reader);
+
+    contactBook.removeContact(phone) catch {
+        try writer.print("Contact with phone# {s} not found,", .{phone});
+        return;
+    };
+    try writer.print("Contact with phone# {s} is removed successfully.", .{phone});
+}
+
+pub fn searchContact(contactBook: *contacts.ContactBook, writer: *Io.Writer, reader: *Io.Reader) !void {
+    try writer.print("\n", .{});
+    var name_buf: [100]u8 = undefined;
+
+    const name = try inputReader("Name to search ==> ", &name_buf, writer, reader);
+
+    const contact = contactBook.searchByName(name) catch {
+        try writer.print("Name {s} not found.", .{name});
+        return;
+    };
+    try writer.print("Name: {s}, Email: {s}, Phone: {s}\n", .{ contact.name, contact.email, contact.phone });
 }
 
 test "simple test" {

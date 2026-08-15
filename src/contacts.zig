@@ -3,6 +3,7 @@ const Io = std.Io;
 
 const contactErrors = error{
     NameNotFound,
+    ContactNotFound,
     OutOfMemory,
 };
 
@@ -30,10 +31,6 @@ pub const ContactBook = struct {
     }
 
     pub fn deinit(self: *ContactBook) void {
-        // for (self.contacts.items) |contact| {
-        //     contact.deinit(self.allocator);
-        // }
-        // self.contacts.deinit(self.allocator);
         self.arena.deinit();
     }
 
@@ -59,7 +56,7 @@ pub const ContactBook = struct {
         try self.contacts.append(allocator, new_contact);
     }
 
-    pub fn removeContact(self: *ContactBook, phone: []const u8) void {
+    pub fn removeContact(self: *ContactBook, phone: []const u8) contactErrors!void {
         const allocator = self.arena.allocator();
         for (self.contacts.items, 0..) |item, index| {
             if (std.mem.eql(u8, item.phone, phone)) {
@@ -68,6 +65,7 @@ pub const ContactBook = struct {
                 return;
             }
         }
+        return contactErrors.ContactNotFound;
     }
 
     pub fn searchByName(self: *ContactBook, name: []const u8) contactErrors!*Contact {
@@ -88,7 +86,7 @@ pub const ContactBook = struct {
         for (self.contacts.items) |item| {
             try writer.print("{s}\t\t", .{item.name});
             try writer.print("{s}\t\t", .{item.email});
-            try writer.print("{s}", .{item.phone});
+            try writer.print("{s}\n", .{item.phone});
         }
         try writer.print("\n", .{});
     }
@@ -108,13 +106,13 @@ test "Test ContactBook" {
     try std.testing.expectEqual(@as(usize, 1), ocnt);
 
     // remove wrong phone number
-    contacts.removeContact("1111111111");
+    try contacts.removeContact("1111111111");
 
     const wcnt = contacts.getContactCount();
     try std.testing.expectEqual(@as(usize, 1), wcnt);
 
     // remove Correct phone number
-    contacts.removeContact("1223456789");
+    try contacts.removeContact("1223456789");
 
     const ccnt = contacts.getContactCount();
     try std.testing.expectEqual(@as(usize, 0), ccnt);
